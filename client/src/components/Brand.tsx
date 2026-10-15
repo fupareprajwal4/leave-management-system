@@ -1,0 +1,2 @@
+import { GraduationCap } from 'lucide-react';
+export default function Brand(){return <div className="brand"><div className="brand-mark"><GraduationCap size={23}/></div><div><strong>SGGS <span>Leave Portal</span></strong><small>Faculty services · Nanded</small></div></div>}

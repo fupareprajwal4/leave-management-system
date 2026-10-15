@@ -1,0 +1,3 @@
+import type {Request,Response,NextFunction} from 'express';
+export class HttpError extends Error{status:number;code:string;constructor(status:number,code:string,message:string){super(message);this.status=status;this.code=code}}
+export function errorHandler(err:any,req:Request,res:Response,_next:NextFunction){const status=Number(err.status)||500;const code=err.code||'INTERNAL_ERROR';if(status>=500)console.error(JSON.stringify({level:'error',requestId:(req as any).requestId,message:err.message,stack:process.env.NODE_ENV==='development'?err.stack:undefined}));res.status(status).json({error:{code,message:status>=500&&process.env.NODE_ENV==='production'?'An unexpected error occurred.':err.message||'Unexpected error.',requestId:(req as any).requestId}})}

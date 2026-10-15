@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+coverage
+.DS_Store
+*.log
+server/uploads/*
+!server/uploads/.gitkeep
+
+client/dist
+server/dist
+.env.*
+!.env.example
+!server/.env.example
+!client/.env.example
+.vercel

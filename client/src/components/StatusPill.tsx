@@ -1,0 +1,2 @@
+import type { LeaveStatus } from '../types';
+export default function StatusPill({status}:{status:LeaveStatus|string}){const cls=status.toLowerCase().replaceAll(' ','-');return <span className={`status-pill ${cls}`}>{status}</span>}

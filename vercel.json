@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm install",
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/internal/process-outbox",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/v1/internal/initialize-year",
+      "schedule": "45 18 31 12 *"
+    }
+  ]
+}

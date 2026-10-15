@@ -1,0 +1,32 @@
+{
+  "name": "sggs-leave-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n client,server -c cyan,green \"npm:dev:client\" \"npm:dev:server\"",
+    "dev:client": "npm --workspace client run dev",
+    "dev:server": "npm --workspace server run dev",
+    "build": "npm --workspace client run build && npm --workspace server run build",
+    "test": "npm --workspace server run test",
+    "seed": "npm --workspace server run seed",
+    "bootstrap-admin": "npm --workspace server run bootstrap-admin"
+  },
+  "devDependencies": {
+    "@vercel/node": "^24.0.1",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "mongodb": "^7.7.0",
+    "mongoose": "^9.11.2",
+    "nodemailer": "10.1.1",
+    "vitest": "5.0.4"
+  }
+}
