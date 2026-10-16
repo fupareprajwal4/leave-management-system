@@ -1,2 +1,402 @@
-import { useEffect,useState } from 'react'; import { Check, GitBranch, Save, Settings2, ShieldAlert } from 'lucide-react'; import SectionHeading from '../../components/SectionHeading'; import { api } from '../../services/api';
-export default function AdminPolicies(){const [types,setTypes]=useState<any[]>([]);const [quota,setQuota]=useState('8');const [error,setError]=useState('');const [saved,setSaved]=useState(false);const [busy,setBusy]=useState(false);useEffect(()=>{api.get('/admin/leave-types').then(r=>{const t=r.data.data||[];setTypes(t);const cl=t.find((x:any)=>x.abbreviation==='CL');if(cl)setQuota(String(cl.annualEntitlement))}).catch(e=>setError(e.response?.data?.error?.message||'Unable to load leave policies.'))},[]);function update(id:string,key:string,value:any){setTypes(prev=>prev.map(t=>t._id===id?{...t,[key]:value}:t));setSaved(false)}async function save(){setBusy(true);setError('');setSaved(false);try{for(const t of types){const original=await api.get('/admin/leave-types');const current=(original.data.data||[]).find((x:any)=>x._id===t._id);if(current&&(current.annualEntitlement!==t.annualEntitlement||current.workflow!==t.workflow||current.active!==t.active||current.template!==t.template)){await api.patch(`/admin/leave-types/${t._id}`,{annualEntitlement:Number(t.annualEntitlement),workflow:t.workflow,active:t.active,template:t.template})}}const cl=types.find(t=>t.abbreviation==='CL');if(cl&&Number(cl.annualEntitlement)!==Number(quota))await api.patch(`/admin/leave-types/${cl._id}`,{annualEntitlement:Number(quota)});setSaved(true)}catch(e:any){setError(e.response?.data?.error?.message||'Policy update failed.')}finally{setBusy(false)}}return <><SectionHeading eyebrow="POLICY CONFIGURATION" title="Leave policies & workflows" description="Configure annual entitlements, category activation and approval routing. Changes are versioned and audited."/><div className="admin-alert"><div className="alert-icon warning"><ShieldAlert size={20}/></div><div><b>Institutional approval needed</b><p>Confirm the official entitlement, CEL expansion, working-day calculation and category rules with the Establishment Section before production use.</p></div></div>{error&&<div className="error-banner">{error}</div>}<div className="policy-admin-grid"><section className="panel policy-editor"><div className="panel-heading"><div><h3><Settings2 size={18}/> Annual entitlement</h3><p>Initial requested eight-day Casual Leave quota</p></div></div><label className="policy-label">CL annual quota (days)<input type="number" min="0" max="365" value={quota} onChange={e=>{setQuota(e.target.value);const cl=types.find(t=>t.abbreviation==='CL');if(cl)update(cl._id,'annualEntitlement',Number(e.target.value))}}/></label><div className="policy-callout"><b>Calendar year</b><p>1 January – 31 December · Timezone: Asia/Kolkata</p><small>Unused leave is not carried forward by the current default policy.</small></div><div className="info-note">Shared combined quotas, pending-day reservations, holiday calendars and half-day rules require a separately approved accounting policy; this interface does not pretend to implement them.</div><button className="btn btn-primary" onClick={()=>void save()} disabled={busy}><Save size={16}/> {busy?'Saving…':'Save policy changes'}</button>{saved&&<div className="success-banner"><Check size={16}/> Policy changes saved to the database and audited.</div>}</section><section className="panel workflow-editor"><div className="panel-heading"><div><h3><GitBranch size={18}/> Approval routing</h3><p>Configure the workflow for each leave category</p></div></div><div className="workflow-options"><div className="workflow-option"><span className="workflow-num">A</span><div><b>Faculty → HOD</b><small>HOD decision is final under the configured category policy.</small></div></div><div className="workflow-option"><span className="workflow-num alt">B</span><div><b>Faculty → HOD → Admin</b><small>HOD forwards; Establishment records final decision.</small></div></div></div>{types.map(t=><div className="route-row" key={t._id}><span>{t.name} ({t.abbreviation})</span><div className="route-controls"><select value={t.workflow} onChange={e=>update(t._id,'workflow',e.target.value)}><option value="hod">Workflow A · HOD only</option><option value="both">Workflow B · HOD + Admin</option></select><select value={t.active?'active':'inactive'} onChange={e=>update(t._id,'active',e.target.value==='active')}><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div>)}<div className="info-note">Each policy update creates a new policy version. Existing requests retain their recorded policy version.</div></section></div></>}
+import { useEffect, useState } from 'react';
+import {
+  Check,
+  GitBranch,
+  Save,
+  Settings2,
+  ShieldAlert,
+} from 'lucide-react';
+import SectionHeading from '../../components/SectionHeading';
+import { api } from '../../services/api';
+
+type LeaveType = {
+  _id: string;
+  name: string;
+  abbreviation: string;
+  description?: string;
+  annualEntitlement: number;
+  workflow: 'hod' | 'both';
+  balancePolicy: 'separate' | 'none' | 'shared';
+  template: 'letter' | 'application' | 'both';
+  active: boolean;
+};
+
+const editableFields = [
+  'annualEntitlement',
+  'workflow',
+  'balancePolicy',
+  'template',
+  'active',
+] as const;
+
+export default function AdminPolicies() {
+  const [types, setTypes] = useState<LeaveType[]>([]);
+  const [original, setOriginal] = useState<LeaveType[]>([]);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    setError('');
+
+    try {
+      const response = await api.get('/admin/leave-types');
+      const data = (response.data.data || []) as LeaveType[];
+
+      setTypes(data.map((type) => ({ ...type })));
+      setOriginal(data.map((type) => ({ ...type })));
+    } catch (e: any) {
+      setError(
+        e.response?.data?.error?.message ||
+          'Unable to load leave policies.',
+      );
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  function update(
+    id: string,
+    key: keyof LeaveType,
+    value: any,
+  ) {
+    setTypes((previous) =>
+      previous.map((type) =>
+        type._id === id
+          ? { ...type, [key]: value }
+          : type,
+      ),
+    );
+
+    setSaved(false);
+  }
+
+  function changedFields(
+    type: LeaveType,
+    before: LeaveType,
+  ) {
+    const payload: Record<string, unknown> = {};
+
+    for (const key of editableFields) {
+      if (type[key] !== before[key]) {
+        payload[key] = type[key];
+      }
+    }
+
+    if (type.name !== before.name) {
+      payload.name = type.name;
+    }
+
+    if (type.description !== before.description) {
+      payload.description = type.description;
+    }
+
+    return payload;
+  }
+
+  async function save() {
+    setBusy(true);
+    setError('');
+    setSaved(false);
+
+    try {
+      const baseline = new Map(
+        original.map((type) => [type._id, type]),
+      );
+
+      const updates = types
+        .map((type) => ({
+          type,
+          payload: changedFields(
+            type,
+            baseline.get(type._id)!,
+          ),
+        }))
+        .filter(
+          (entry) =>
+            Object.keys(entry.payload).length > 0,
+        );
+
+      for (const entry of updates) {
+        await api.patch(
+          `/admin/leave-types/${entry.type._id}`,
+          entry.payload,
+        );
+      }
+
+      await load();
+      setSaved(true);
+    } catch (e: any) {
+      setError(
+        e.response?.data?.error?.message ||
+          'A policy update failed. Reload the page to confirm which changes were saved before retrying.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <SectionHeading
+        eyebrow="POLICY CONFIGURATION"
+        title="Leave policies & workflows"
+        description="Configure institutional quotas once. Eligible faculty receive their own balances automatically; no per-faculty entitlement approval or data entry is required."
+        action={
+          <button
+            className="btn btn-primary"
+            onClick={() => void save()}
+            disabled={busy}
+          >
+            <Save size={16} />
+            {busy ? 'Saving…' : 'Save policy changes'}
+          </button>
+        }
+      />
+
+      <div className="admin-alert">
+        <div className="alert-icon warning">
+          <ShieldAlert size={20} />
+        </div>
+
+        <div>
+          <b>Institutional rules</b>
+          <p>
+            Confirm official quotas and category eligibility with
+            the Establishment Section. Working-day/holiday
+            calculations, half-days and carry-forward are not
+            enabled by this configuration.
+          </p>
+        </div>
+      </div>
+
+      <div className="policy-callout">
+        <b>Accounting period: Calendar year</b>
+        <p>1 January – 31 December · Timezone: Asia/Kolkata</p>
+        <small>
+          Unused leave is not carried forward by the current
+          default policy. The current implementation counts
+          inclusive calendar days; institutional holidays and
+          half-day rules are not configured here.
+        </small>
+      </div>
+
+      {error && (
+        <div className="error-banner">{error}</div>
+      )}
+
+      {saved && (
+        <div className="success-banner">
+          <Check size={16} />
+          Policy changes saved and audited. Annual quota changes
+          are applied to every current-year faculty and HOD
+          balance immediately; days already consumed or reserved
+          are preserved. New applications use the updated
+          approval route. Existing submitted applications keep
+          their recorded workflow.
+        </div>
+      )}
+
+      <section className="panel table-panel">
+        <div className="panel-heading">
+          <div>
+            <h3>
+              <Settings2 size={18} />
+              Institutional leave categories
+            </h3>
+            <p>
+              Each category's annual entitlement is the rule used
+              to initialize separate faculty balances.
+            </p>
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Leave category</th>
+                <th>Annual quota (days)</th>
+                <th>Approval route</th>
+                <th>Balance accounting</th>
+                <th>Document</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {types.map((type) => (
+                <tr key={type._id}>
+                  <td>
+                    <b>{type.name}</b>
+                    <small className="table-sub">
+                      {type.abbreviation}
+                    </small>
+                  </td>
+
+                  <td>
+                    <input
+                      aria-label={`Annual quota for ${type.name}`}
+                      type="number"
+                      min="0"
+                      max="366"
+                      step="1"
+                      value={type.annualEntitlement}
+                      onChange={(event) =>
+                        update(
+                          type._id,
+                          'annualEntitlement',
+                          Number(event.target.value),
+                        )
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <select
+                      value={type.workflow}
+                      onChange={(event) =>
+                        update(
+                          type._id,
+                          'workflow',
+                          event.target.value as LeaveType['workflow'],
+                        )
+                      }
+                    >
+                      <option value="hod">HOD final</option>
+                      <option value="both">
+                        HOD + Establishment
+                      </option>
+                    </select>
+                  </td>
+
+                  <td>
+                    <select
+                      value={type.balancePolicy || 'separate'}
+                      onChange={(event) =>
+                        update(
+                          type._id,
+                          'balancePolicy',
+                          event.target.value as LeaveType['balancePolicy'],
+                        )
+                      }
+                    >
+                      <option value="separate">
+                        Individual balance
+                      </option>
+                      <option value="none">
+                        No balance deduction
+                      </option>
+                      <option value="shared" disabled>
+                        Legacy shared (unsupported)
+                      </option>
+                    </select>
+                  </td>
+
+                  <td>
+                    <select
+                      value={type.template}
+                      onChange={(event) =>
+                        update(
+                          type._id,
+                          'template',
+                          event.target.value as LeaveType['template'],
+                        )
+                      }
+                    >
+                      <option value="letter">Letter</option>
+                      <option value="application">
+                        Application
+                      </option>
+                      <option value="both">Both</option>
+                    </select>
+                  </td>
+
+                  <td>
+                    <select
+                      value={
+                        type.active ? 'active' : 'inactive'
+                      }
+                      onChange={(event) =>
+                        update(
+                          type._id,
+                          'active',
+                          event.target.value === 'active',
+                        )
+                      }
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {types.length === 0 && (
+            <div className="empty-state">
+              No leave categories found.
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="panel workflow-editor">
+        <div className="panel-heading">
+          <div>
+            <h3>
+              <GitBranch size={18} />
+              How automatic balances work
+            </h3>
+            <p>
+              Configure every category's quota, activation and
+              routing here. Current-year balances update
+              automatically for eligible faculty and HODs;
+              individual corrections remain available in Faculty
+              Leave Balances.
+            </p>
+          </div>
+        </div>
+
+        <div className="workflow-options">
+          <div className="workflow-option">
+            <span className="workflow-num">1</span>
+            <div>
+              <b>Configure the rule</b>
+              <small>
+                Set annual quota and which leave categories use a
+                balance.
+              </small>
+            </div>
+          </div>
+
+          <div className="workflow-option">
+            <span className="workflow-num alt">2</span>
+            <div>
+              <b>Automatic provisioning</b>
+              <small>
+                New faculty receive the current policy at first
+                sign-in; annual initialization provisions all
+                active faculty and HODs.
+              </small>
+            </div>
+          </div>
+
+          <div className="workflow-option">
+            <span className="workflow-num">3</span>
+            <div>
+              <b>Independent accounting</b>
+              <small>
+                Reservations, consumption and adjustments are
+                tracked per faculty member and leave category.
+              </small>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}

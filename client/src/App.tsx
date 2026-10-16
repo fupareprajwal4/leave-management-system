@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+
+import { Navigate, Route, Routes } from "react-router-dom";
 import { useEffect, useState } from "react";
 import AppShell from "./layouts/AppShell";
 import type { Role } from "./types";
@@ -15,10 +16,13 @@ import AdminRequests from "./pages/admin/Requests";
 import AdminFaculty from "./pages/admin/Faculty";
 import AdminPolicies from "./pages/admin/Policies";
 import AdminReports from "./pages/admin/Reports";
+import AdminLeaveBalances from "./pages/admin/LeaveBalances";
 import { GraduationCap } from "lucide-react";
 import Login from "./pages/Login";
 import { api } from "./services/api";
+
 const demo = import.meta.env.VITE_DEMO_MODE === "true";
+
 function Loading() {
   return (
     <div className="login-page">
@@ -30,18 +34,22 @@ function Loading() {
     </div>
   );
 }
+
 export default function App() {
   const [role, setRole] = useState<Role>("faculty");
   const [ready, setReady] = useState(demo);
   const [signedIn, setSignedIn] = useState(demo);
   const [user, setUser] = useState<any>(null);
+
   useEffect(() => {
     if (demo) {
       setReady(true);
       setSignedIn(true);
       return;
     }
+
     let active = true;
+
     api
       .get("/auth/me")
       .then((r) => {
@@ -56,23 +64,29 @@ export default function App() {
       .finally(() => {
         if (active) setReady(true);
       });
+
     const onUnauthorized = () => {
       setSignedIn(false);
       setUser(null);
     };
+
     window.addEventListener("sggs:unauthorized", onUnauthorized);
+
     return () => {
       active = false;
       window.removeEventListener("sggs:unauthorized", onUnauthorized);
     };
   }, []);
+
   if (!ready) return <Loading />;
+
   return (
     <Routes>
       <Route
         path="/login"
         element={signedIn ? <Navigate to={`/${role}`} replace /> : <Login />}
       />
+
       <Route
         path="/access-denied"
         element={
@@ -98,6 +112,7 @@ export default function App() {
           </div>
         }
       />
+
       <Route
         path="/access-pending"
         element={
@@ -147,6 +162,7 @@ export default function App() {
           </div>
         }
       />
+
       <Route
         element={
           signedIn ? (
@@ -162,46 +178,51 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to={`/${role}`} replace />} />
+
         <Route
           path="faculty"
           element={
-            role === "faculty" ? (
+            role === "faculty" || role === "hod" ? (
               <FacultyDashboard />
             ) : (
               <Navigate to={`/${role}`} replace />
             )
           }
         />
+
         <Route
           path="faculty/new"
           element={
-            role === "faculty" ? (
+            role === "faculty" || role === "hod" ? (
               <NewApplication />
             ) : (
               <Navigate to={`/${role}`} replace />
             )
           }
         />
+
         <Route
           path="faculty/applications"
           element={
-            role === "faculty" ? (
+            role === "faculty" || role === "hod" ? (
               <Applications />
             ) : (
               <Navigate to={`/${role}`} replace />
             )
           }
         />
+
         <Route
           path="faculty/balances"
           element={
-            role === "faculty" ? (
+            role === "faculty" || role === "hod" ? (
               <Balances />
             ) : (
               <Navigate to={`/${role}`} replace />
             )
           }
         />
+
         <Route
           path="hod"
           element={
@@ -212,6 +233,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="hod/requests"
           element={
@@ -222,6 +244,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="hod/faculty"
           element={
@@ -232,6 +255,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="admin"
           element={
@@ -242,6 +266,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="admin/requests"
           element={
@@ -252,6 +277,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="admin/faculty"
           element={
@@ -262,6 +288,18 @@ export default function App() {
             )
           }
         />
+
+        <Route
+          path="admin/balances"
+          element={
+            role === "admin" ? (
+              <AdminLeaveBalances />
+            ) : (
+              <Navigate to={`/${role}`} replace />
+            )
+          }
+        />
+
         <Route
           path="admin/policies"
           element={
@@ -272,6 +310,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="admin/reports"
           element={
@@ -282,6 +321,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="admin/access-requests"
           element={
@@ -292,6 +332,7 @@ export default function App() {
             )
           }
         />
+
         <Route
           path="*"
           element={

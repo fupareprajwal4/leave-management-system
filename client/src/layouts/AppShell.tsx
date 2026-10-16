@@ -1,3 +1,4 @@
+
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
@@ -11,7 +12,6 @@ import {
   ChartNoAxesCombined,
   Bell,
   Search,
-  ChevronDown,
   LogOut,
   Menu,
   X,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Brand from "../components/Brand";
 import type { Role } from "../types";
+
 const nav: Record<
   Role,
   { label: string; items: { to: string; label: string; icon: any }[] }
@@ -39,6 +40,9 @@ const nav: Record<
       { to: "/hod", label: "Overview", icon: LayoutDashboard },
       { to: "/hod/requests", label: "Review requests", icon: ClipboardCheck },
       { to: "/hod/faculty", label: "Department faculty", icon: Users },
+      { to: "/faculty/new", label: "My leave application", icon: FilePlus2 },
+      { to: "/faculty/applications", label: "My applications", icon: Files },
+      { to: "/faculty/balances", label: "My leave balances", icon: WalletCards },
     ],
   },
   admin: {
@@ -51,6 +55,7 @@ const nav: Record<
         icon: ClipboardCheck,
       },
       { to: "/admin/faculty", label: "People & departments", icon: Users },
+      { to: "/admin/balances", label: "Faculty leave balances", icon: WalletCards },
       { to: "/admin/policies", label: "Leave policies", icon: Settings2 },
       {
         to: "/admin/reports",
@@ -65,6 +70,7 @@ const nav: Record<
     ],
   },
 };
+
 export default function AppShell({
   role,
   setRole,
@@ -79,6 +85,7 @@ export default function AppShell({
   const [mobile, setMobile] = useState(false);
   const navigate = useNavigate();
   const config = nav[role];
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
@@ -107,6 +114,7 @@ export default function AppShell({
             );
           })}
         </nav>
+
         <div className="sidebar-bottom">
           <div className="secure-note">
             <ShieldCheck size={18} />
@@ -124,6 +132,7 @@ export default function AppShell({
           </div>
         </div>
       </aside>
+
       {mobile && (
         <button
           className="mobile-scrim"
@@ -131,6 +140,7 @@ export default function AppShell({
           aria-label="Close menu"
         />
       )}
+
       <main className="main-area">
         <header className="topbar">
           <button
@@ -140,6 +150,7 @@ export default function AppShell({
           >
             {mobile ? <X /> : <Menu />}
           </button>
+
           <div className="breadcrumb">
             <span>Workspace</span>
             <span className="crumb-dot">/</span>
@@ -151,6 +162,7 @@ export default function AppShell({
                   : "Establishment Section"}
             </b>
           </div>
+
           <div className="top-actions">
             <div className="search-box">
               <Search size={16} />
@@ -159,6 +171,7 @@ export default function AppShell({
                 aria-label="Search applications"
               />
             </div>
+
             <button
               className="icon-button notification"
               aria-label="Notifications"
@@ -166,6 +179,7 @@ export default function AppShell({
               <Bell size={18} />
               <i />
             </button>
+
             <button
               className="user-menu"
               onClick={async () => {
@@ -209,6 +223,7 @@ export default function AppShell({
             </button>
           </div>
         </header>
+
         {demoMode && (
           <div className="demo-strip">
             <span>
@@ -234,9 +249,11 @@ export default function AppShell({
             </label>
           </div>
         )}
+
         <div className="page-content">
           <Outlet />
         </div>
+
         <footer className="footer">
           <span>
             © {new Date().getFullYear()} SGGSIE&T · Leave Management System
