@@ -3,3 +3,4 @@ const schema=z.object({NODE_ENV:z.enum(['development','test','production']).defa
 export const env=schema.parse(process.env); if(env.NODE_ENV==='production'&&env.SESSION_SECRET==='dev-only-change-this-session-secret') throw new Error('SESSION_SECRET must be changed in production.'); if(env.NODE_ENV==='production'&&(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_CALLBACK_URL)) throw new Error('Google OAuth environment variables are required in production.');
 
 if(env.NODE_ENV==='production'&&!process.env.MONGODB_URI) throw new Error('MONGODB_URI must be configured in production.'); if(env.NODE_ENV==='production'&&!process.env.CLIENT_URL) throw new Error('CLIENT_URL must be configured in production.');
+// kartik gurve
